@@ -1,54 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from core.database import get_db, Item
-from models.schemas import ItemCreate
-from datetime import date
+# BMRC Inventory — FastAPI Backend
 
-router = APIRouter()
+## Quick start (local)
 
-def item_status(i):
-    total = i.qty_central + i.qty_mufulira + i.qty_nkana
-    return "OUT" if total == 0 else ("LOW" if total <= i.reorder_level else "OK")
+```bash
+cd bmrc_backend
+pip install -r requirements.txt
+cp .env.example .env          # add your ANTHROPIC_API_KEY
+python seed.py                # load sample items
+uvicorn main:app --reload     # starts on http://localhost:8000
+```
 
-def to_out(i):
-    d = {c.name: getattr(i, c.name) for c in i.__table__.columns}
-    d["status"] = item_status(i)
-    return d
+## API docs
+Open http://localhost:8000/docs for interactive Swagger UI.
 
-@router.get("/")
-def list_items(db: Session = Depends(get_db)):
-    return [to_out(i) for i in db.query(Item).all()]
+## Key endpoints
 
-@router.post("/")
-def create_item(payload: ItemCreate, db: Session = Depends(get_db)):
-    if db.query(Item).filter(Item.code == payload.code).first():
-        raise HTTPException(400, "Item code already exists")
-    item = Item(
-        code=payload.code, description=payload.description,
-        category=payload.category, unit=payload.unit,
-        reorder_level=payload.reorder_level,
-        qty_central=payload.initial_qty_central,
-        wac_usd=payload.initial_wac_usd
-    )
-    db.add(item); db.commit(); db.refresh(item)
-    return to_out(item)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /api/items/ | All items with status |
+| POST | /api/items/ | Add new item |
+| GET | /api/items/qr/{code} | QR payload for item |
+| POST | /api/transfers/ | Record transfer / STD |
+| POST | /api/grn/ | Post GRN (auto-recalcs WAC) |
+| GET | /api/returns/ | Open returns with status |
+| POST | /api/returns/ | Log returnable item |
+| PATCH | /api/returns/{id}/close | Mark returned |
+| POST | /api/ai/chat | AI assistant query |
 
-@router.get("/qr/{code}")
-def qr_data(code: str, db: Session = Depends(get_db)):
-    """Returns the JSON payload that gets embedded in QR codes."""
-    i = db.query(Item).filter(Item.code == code).first()
-    if not i:
-        raise HTTPException(404, "Item not found")
-    return {
-        "code": i.code, "desc": i.description, "cat": i.category,
-        "unit": i.unit, "wac": i.wac_usd,
-        "central": i.qty_central, "mufulira": i.qty_mufulira, "nkana": i.qty_nkana,
-        "generated": str(date.today())
-    }
+## Deploy to Railway (free tier)
+1. Push this folder to a GitHub repo
+2. New project on railway.app → Deploy from GitHub
+3. Add env vars: DATABASE_URL (PostgreSQL), ANTHROPIC_API_KEY
+4. Done — Railway gives you a public URL
 
-@router.get("/{code}")
-def get_item(code: str, db: Session = Depends(get_db)):
-    i = db.query(Item).filter(Item.code == code).first()
-    if not i:
-        raise HTTPException(404, "Item not found")
-    return to_out(i)
+## Connect the web app
+In the artifact, replace the in-browser state with:
+```js
+const API = "https://your-railway-url.up.railway.app";
+const items = await fetch(`${API}/api/items/`).then(r => r.json());
+```

@@ -1,15 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import items, transfers, grn, returns, ai
+from core.database import init_db
 
 app = FastAPI(title="BMRC Inventory API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restrict to your domain in production
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 app.include_router(items.router,     prefix="/api/items",     tags=["Items"])
 app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])
