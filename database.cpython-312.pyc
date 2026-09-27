@@ -1,0 +1,12 @@
+def recalc_wac(old_qty: float, old_wac: float, new_qty: float, new_cost: float) -> float:
+    """Weighted Average Cost: ((old_qty * old_wac) + (new_qty * new_cost)) / total"""
+    total = old_qty + new_qty
+    if total == 0:
+        return 0
+    return ((old_qty * old_wac) + (new_qty * new_cost)) / total
+
+STORE_FIELD = {
+    "central":  "qty_central",
+    "mufulira": "qty_mufulira",
+    "nkana":    "qty_nkana",
+}

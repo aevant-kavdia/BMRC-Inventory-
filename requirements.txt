@@ -1,0 +1,22 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import items, transfers, grn, returns, ai
+
+app = FastAPI(title="BMRC Inventory API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # restrict to your domain in production
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(items.router,     prefix="/api/items",     tags=["Items"])
+app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])
+app.include_router(grn.router,       prefix="/api/grn",       tags=["GRN"])
+app.include_router(returns.router,   prefix="/api/returns",   tags=["Returns"])
+app.include_router(ai.router,        prefix="/api/ai",        tags=["AI"])
+
+@app.get("/")
+def root():
+    return {"status": "BMRC Inventory API running"}
